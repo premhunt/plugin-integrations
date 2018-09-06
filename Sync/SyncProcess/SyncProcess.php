@@ -386,6 +386,7 @@ class SyncProcess
             );
 
             foreach ($mappedInternalObjectsNames as $mappedInternalObjectName) {
+                var_dump('mapped'); var_dump($mappedInternalObjectName);
                 $objectMapping = $this->mappingManualDAO->getObjectMapping($mappedInternalObjectName, $integrationObjectName);
                 foreach ($integrationObjects as $integrationObject) {
                     $internalObject = $this->internalSyncDataExchange->getConflictedInternalObject($this->mappingManualDAO, $mappedInternalObjectName, $integrationObject);

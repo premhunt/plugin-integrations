@@ -160,6 +160,7 @@ class ContactObject implements ObjectInterface
      */
     public function findObjectsBetweenDates(\DateTimeInterface $from, \DateTimeInterface $to, $start, $limit)
     {
+        var_dump('xxx'); die();
         $qb = $this->connection->createQueryBuilder();
         $qb->select('*')
             ->from(MAUTIC_TABLE_PREFIX.'leads', 'l')

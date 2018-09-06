@@ -221,7 +221,6 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
      */
     public function getConflictedInternalObject(MappingManualDAO $mappingManualDAO, string $internalObjectName, ReportObjectDAO $integrationObjectDAO)
     {
-        var_dump($internalObjectName); var_dump($integrationObjectDAO);
 
         // Check to see if we have a match
         $internalObjectDAO = $this->mappingHelper->findMauticObject($mappingManualDAO, $internalObjectName, $integrationObjectDAO);
@@ -382,6 +381,8 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                 $this->getFieldObjectName($objectDAO->getObject()),
                 $objectDAO->getToDateTime()
             );
+
+            var_dump($fieldsChanges); die();
 
             $reportObjects = [];
             foreach ($fieldsChanges as $fieldChange) {

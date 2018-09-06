@@ -62,8 +62,6 @@ class MappingHelper
      */
     public function findMauticObject(MappingManualDAO $mappingManualDAO, string $internalObjectName, ObjectDAO $integrationObjectDAO)
     {
-
-        var_dump('find mautic object');
         // Check if this contact is already tracked
         if ($internalObject = $this->objectMappingRepository->getInternalObject(
             $mappingManualDAO->getIntegration(),
@@ -79,7 +77,7 @@ class MappingHelper
         }
 
         // We don't know who this is so search Mautic
-        $uniqueIdentifierFields = $this->fieldModel->getUniqueIdentifierFields(['object' => $internalObjectName]);
+        $uniqueIdentifierFields = $this->fieldModel->getUniqueIdentifierFields(['object' => ($internalObjectName=='AbstractLead') ? 'Lead' : $internalObjectName ]);
         $identifiers            = [];
 
         foreach ($uniqueIdentifierFields as $field => $fieldLabel) {

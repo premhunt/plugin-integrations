@@ -37,7 +37,7 @@ class AbstractLeadObject extends ContactObject
      */
     public function findObjectsBetweenDates(\DateTimeInterface $from, \DateTimeInterface $to, $start, $limit)
     {
-        var_dump('aaa'); die();
+        //var_dump('aaa'); die();
         $qb = $this->connection->createQueryBuilder();
         $qb->select('*')
             ->from(MAUTIC_TABLE_PREFIX . 'leads', 'l')
@@ -65,7 +65,9 @@ class AbstractLeadObject extends ContactObject
             ->setFirstResult($start)
             ->setMaxResults($limit);
 
-
+        var_dump($qb->getSQL());
+        var_dump($qb->getParameters());
+        die();
         return $qb->execute()->fetchAll();
     }
 
