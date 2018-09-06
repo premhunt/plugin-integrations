@@ -117,6 +117,14 @@ return [
                     'doctrine.dbal.default_connection',
                 ],
             ],
+            'mautic.integrations.helper.abstract_lead_object' => [
+                'class' => \MauticPlugin\IntegrationsBundle\Sync\SyncDataExchange\InternalObject\AbstractLeadObject::class,
+                'arguments' => [
+                    'mautic.lead.model.lead',
+                    'mautic.lead.repository.lead',
+                    'doctrine.dbal.default_connection',
+                ],
+            ],
             'mautic.integrations.helper.company_object' => [
                 'class' => \MauticPlugin\IntegrationsBundle\Sync\SyncDataExchange\InternalObject\CompanyObject::class,
                 'arguments' => [
@@ -133,6 +141,7 @@ return [
                     'mautic.integrations.helper.sync_mapping',
                     'mautic.integrations.helper.company_object',
                     'mautic.integrations.helper.contact_object',
+                    'mautic.integrations.helper.abstract_lead_object',
                     'mautic.lead.model.field',
                 ],
             ],

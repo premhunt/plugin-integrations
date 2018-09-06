@@ -28,6 +28,7 @@ use MauticPlugin\IntegrationsBundle\Sync\DAO\Sync\Order\OrderDAO;
 use MauticPlugin\IntegrationsBundle\Sync\DAO\Sync\Request\RequestDAO;
 use MauticPlugin\IntegrationsBundle\Sync\DAO\Value\EncodedValueDAO;
 use MauticPlugin\IntegrationsBundle\Entity\FieldChangeRepository;
+use MauticPlugin\IntegrationsBundle\Sync\SyncDataExchange\InternalObject\AbstractLeadObject;
 use MauticPlugin\IntegrationsBundle\Sync\SyncDataExchange\InternalObject\CompanyObject;
 use MauticPlugin\IntegrationsBundle\Sync\SyncDataExchange\InternalObject\ContactObject;
 use MauticPlugin\IntegrationsBundle\Sync\ValueNormalizer\ValueNormalizer;
@@ -41,6 +42,7 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
     const NAME = 'mautic';
     const OBJECT_CONTACT = 'lead'; // kept as lead for BC
     const OBJECT_COMPANY = 'company';
+    const OBJECT_ABSTRACT_LEAD = 'AbstractLead';
 
     /**
      * @var FieldChangeRepository
@@ -66,6 +68,11 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
      * @var ContactObject
      */
     private $contactObjectHelper;
+
+    /**
+     * @var AbstractLeadObject
+     */
+    private $leadObjectHelper;
 
     /**
      * @var FieldModel
@@ -98,6 +105,7 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
         MappingHelper $mappingHelper,
         CompanyObject $companyObjectHelper,
         ContactObject $contactObjectHelper,
+        AbstractLeadObject $leadObjectHelper,
         FieldModel $fieldModel
     ) {
         $this->fieldChangeRepository   = $fieldChangeRepository;
@@ -106,6 +114,7 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
         $this->companyObjectHelper     = $companyObjectHelper;
         $this->contactObjectHelper     = $contactObjectHelper;
         $this->fieldModel              = $fieldModel;
+        $this->leadObjectHelper        = $leadObjectHelper;
         $this->valueNormalizer         = new ValueNormalizer();
     }
 
@@ -157,6 +166,9 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                 case self::OBJECT_COMPANY:
                     $updatedObjectMappings = $this->companyObjectHelper->update($identifiedObjectIds, $updateObjects);
                     break;
+                case self::OBJECT_ABSTRACT_LEAD:
+                    $updatedObjectMappings = $this->leadObjectHelper->update($identifiedObjectIds, $updateObjects);
+                    break;
                 default:
                     throw new ObjectNotSupportedException(self::NAME, $objectName);
             }
@@ -189,6 +201,9 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                 case self::OBJECT_COMPANY:
                     $objectMappings = $this->companyObjectHelper->create($createObjects);
                     break;
+                case self::OBJECT_ABSTRACT_LEAD:
+                    $objectMappings = $this->leadObjectHelper->create($createObjects);
+                    break;
                 default:
                     throw new ObjectNotSupportedException(self::NAME, $objectName);
             }
@@ -206,6 +221,8 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
      */
     public function getConflictedInternalObject(MappingManualDAO $mappingManualDAO, string $internalObjectName, ReportObjectDAO $integrationObjectDAO)
     {
+        var_dump($internalObjectName); var_dump($integrationObjectDAO);
+
         // Check to see if we have a match
         $internalObjectDAO = $this->mappingHelper->findMauticObject($mappingManualDAO, $internalObjectName, $integrationObjectDAO);
 
@@ -277,6 +294,8 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
         $limit = 200;
         $start = $limit * ($requestDAO->getSyncIteration() - 1);
 
+        var_dump($requestedObjects);
+
         foreach ($requestedObjects as $objectDAO) {
             $mauticFields = $this->getFieldList($objectDAO->getObject());
 
@@ -304,6 +323,14 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                     break;
                 case self::OBJECT_COMPANY:
                     $foundObjects = $this->companyObjectHelper->findObjectsBetweenDates(
+                        $objectDAO->getFromDateTime(),
+                        $objectDAO->getToDateTime(),
+                        $start,
+                        $limit
+                    );
+                    break;
+                case self::OBJECT_ABSTRACT_LEAD:
+                    $foundObjects = $this->leadObjectHelper->findObjectsBetweenDates(
                         $objectDAO->getFromDateTime(),
                         $objectDAO->getToDateTime(),
                         $start,
@@ -350,6 +377,7 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
         $requestedObjects = $requestDAO->getObjects();
 
         foreach ($requestedObjects as $objectDAO) {
+
             $fieldsChanges = $this->fieldChangeRepository->findChangesBefore(
                 $this->getFieldObjectName($objectDAO->getObject()),
                 $objectDAO->getToDateTime()
@@ -421,6 +449,8 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                 return Lead::class;
             case self::OBJECT_COMPANY:
                 return Company::class;
+            case self::OBJECT_ABSTRACT_LEAD:
+                return \AbstractLead::class;
             default:
                 throw new ObjectNotSupportedException(self::NAME, $objectName);
         }

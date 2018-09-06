@@ -190,10 +190,15 @@ class MappingManualDAO
         $fields               = [];
         $internalObjectsNames = $this->integrationObjectsMapping[$integrationObjectName];
 
+        var_dump($internalObjectsNames);
+        var_dump($this->objectsMapping);
+
         foreach ($internalObjectsNames as $internalObjectName) {
             /** @var ObjectMappingDAO $objectMappingDAO */
             $objectMappingDAO = $this->objectsMapping[$internalObjectName][$integrationObjectName];
             $fieldMappings    = $objectMappingDAO->getFieldMappings();
+
+
             foreach ($fieldMappings as $fieldMapping) {
                 if ($fieldMapping->getSyncDirection() === ObjectMappingDAO::SYNC_TO_MAUTIC) {
                     // Ignore because this field is a one way sync

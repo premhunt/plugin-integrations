@@ -146,6 +146,7 @@ class SyncProcess
             );
 
             $syncReport = $this->generateIntegrationSyncReport();
+
             if (!$syncReport->shouldSync()) {
                 DebugLogger::log(
                     $this->mappingManualDAO->getIntegration(),
@@ -250,6 +251,10 @@ class SyncProcess
         $integrationRequestDAO = new RequestDAO($this->syncIteration, $this->isFirstTimeSync);
 
         $integrationObjectsNames = $this->mappingManualDAO->getIntegrationObjectsNames();
+
+        var_dump($this->mappingManualDAO);
+        var_dump($integrationObjectsNames);
+
         foreach ($integrationObjectsNames as $integrationObjectName) {
             $integrationObjectFields = $this->mappingManualDAO->getIntegrationObjectFieldNames($integrationObjectName);
 
@@ -279,6 +284,8 @@ class SyncProcess
                 __CLASS__.':'.__FUNCTION__
             );
 
+            var_dump($integrationObjectName);
+
             $integrationRequestObject = new RequestObjectDAO($integrationObjectName, $objectSyncFromDateTime, $this->syncDateTime);
             foreach ($integrationObjectFields as $integrationObjectField) {
                 $integrationRequestObject->addField($integrationObjectField);
@@ -304,6 +311,7 @@ class SyncProcess
 
         $internalObjectsNames = $this->mappingManualDAO->getInternalObjectsNames();
         foreach ($internalObjectsNames as $internalObjectName) {
+            var_dump($internalObjectName);
             $internalObjectFields = $this->mappingManualDAO->getInternalObjectFieldNames($internalObjectName);
             if (count($internalObjectFields) === 0) {
                 // No fields configured for a sync
@@ -320,6 +328,7 @@ class SyncProcess
             }
 
             $objectSyncFromDateTime = $this->getSyncFromDateTime(MauticSyncDataExchange::NAME, $internalObjectName);
+            var_dump($objectSyncFromDateTime);
             DebugLogger::log(
                 $this->mappingManualDAO->getIntegration(),
                 sprintf(
@@ -342,6 +351,8 @@ class SyncProcess
             ? $this->internalSyncDataExchange->getSyncReport($internalRequestDAO)
             :
             new ReportDAO(MauticSyncDataExchange::NAME);
+
+        //var_dump($internalSyncReport); die();
 
         return $internalSyncReport;
     }
@@ -403,6 +414,7 @@ class SyncProcess
         $syncOrder = new OrderDAO($this->syncDateTime, $this->isFirstTimeSync);
 
         $internalObjectNames = $this->mappingManualDAO->getInternalObjectsNames();
+
         foreach ($internalObjectNames as $internalObjectName) {
             $internalObjects              = $syncReport->getObjects($internalObjectName);
             $mappedIntegrationObjectNames = $this->mappingManualDAO->getMappedIntegrationObjectsNames($internalObjectName);
@@ -459,6 +471,8 @@ class SyncProcess
             return $this->syncFromDateTime;
         }
 
+//        var_dump($this->lastObjectSyncDates); die();
+
         $key = $integration.$object;
         if (isset($this->lastObjectSyncDates[$key])) {
             // Use the same sync date for integrations to paginate properly
@@ -473,6 +487,8 @@ class SyncProcess
             // Otherwise, just sync the last 24 hours
             $this->lastObjectSyncDates[$key] = new \DateTimeImmutable('-24 hours', new \DateTimeZone('UTC'));
         }
+
+
 
         return $this->lastObjectSyncDates[$key];
     }
@@ -501,6 +517,8 @@ class SyncProcess
             $integrationObject->getObject(),
             $integrationObject->getObjectId()
         );
+
+        //var_dump($internalObject); var_dump($integrationObject); die();
 
         if ($internalObject->getObjectId()) {
             DebugLogger::log(

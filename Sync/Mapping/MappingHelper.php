@@ -62,6 +62,8 @@ class MappingHelper
      */
     public function findMauticObject(MappingManualDAO $mappingManualDAO, string $internalObjectName, ObjectDAO $integrationObjectDAO)
     {
+
+        var_dump('find mautic object');
         // Check if this contact is already tracked
         if ($internalObject = $this->objectMappingRepository->getInternalObject(
             $mappingManualDAO->getIntegration(),
@@ -182,7 +184,7 @@ class MappingHelper
     /**
      * @param ObjectMapping $objectMapping
      */
-    private function saveObjectMapping(ObjectMapping $objectMapping)
+    public function saveObjectMapping(ObjectMapping $objectMapping)
     {
         $this->objectMappingRepository->saveEntity($objectMapping);
         $this->objectMappingRepository->clear();
@@ -191,7 +193,7 @@ class MappingHelper
     /**
      * @param UpdatedObjectMappingDAO $updatedObjectMappingDAO
      */
-    private function updateObjectMapping(UpdatedObjectMappingDAO $updatedObjectMappingDAO)
+    public function updateObjectMapping(UpdatedObjectMappingDAO $updatedObjectMappingDAO)
     {
         $integration = $updatedObjectMappingDAO->getObjectChangeDAO()->getIntegration();
 
