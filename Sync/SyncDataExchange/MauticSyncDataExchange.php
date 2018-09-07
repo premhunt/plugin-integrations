@@ -159,14 +159,14 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
 
             $identifiedObjectIds = $syncOrderDAO->getIdentifiedObjectIds($objectName);
 
-            switch ($objectName) {
+            switch (strtolower($objectName)) {
                 case self::OBJECT_CONTACT:
                     $updatedObjectMappings = $this->contactObjectHelper->update($identifiedObjectIds, $updateObjects);
                     break;
                 case self::OBJECT_COMPANY:
                     $updatedObjectMappings = $this->companyObjectHelper->update($identifiedObjectIds, $updateObjects);
                     break;
-                case self::OBJECT_ABSTRACT_LEAD:
+                case strtolower(self::OBJECT_ABSTRACT_LEAD):
                     $updatedObjectMappings = $this->leadObjectHelper->update($identifiedObjectIds, $updateObjects);
                     break;
                 default:
@@ -443,12 +443,12 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
      */
     private function getFieldObjectName(string $objectName)
     {
-        switch ($objectName) {
+        switch (strtolower($objectName)) {
             case self::OBJECT_CONTACT:
                 return Lead::class;
             case self::OBJECT_COMPANY:
                 return Company::class;
-            case self::OBJECT_ABSTRACT_LEAD:
+            case strtolower(self::OBJECT_ABSTRACT_LEAD):
                 return \AbstractLead::class;
             default:
                 throw new ObjectNotSupportedException(self::NAME, $objectName);
