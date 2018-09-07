@@ -301,10 +301,6 @@ class SyncProcess
         return $integrationSyncReport;
     }
 
-    /**
-     * @return ReportDAO
-     * @throws \MauticPlugin\IntegrationsBundle\Sync\Exception\ObjectNotFoundException
-     */
     private function generateInternalSyncReport()
     {
         $internalRequestDAO = new RequestDAO($this->syncIteration, $this->isFirstTimeSync);

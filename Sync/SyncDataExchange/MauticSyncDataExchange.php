@@ -382,8 +382,6 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                 $objectDAO->getToDateTime()
             );
 
-            var_dump($fieldsChanges); die();
-
             $reportObjects = [];
             foreach ($fieldsChanges as $fieldChange) {
                 $object           = $fieldChange['object_type'];
