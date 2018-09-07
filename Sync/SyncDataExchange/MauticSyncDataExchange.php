@@ -384,7 +384,7 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
 
             $reportObjects = [];
             foreach ($fieldsChanges as $fieldChange) {
-                $object           = $fieldChange['object_type'];
+                $object           = $this->getObjectNameFromEntityName($fieldChange['object_type']);
                 $objectId         = $fieldChange['object_id'];
                 $modifiedDateTime = new \DateTime($fieldChange['modified_at'], new \DateTimeZone('UTC'));
 
@@ -450,6 +450,24 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                 return Company::class;
             case self::OBJECT_ABSTRACT_LEAD:
                 return \AbstractLead::class;
+            default:
+                throw new ObjectNotSupportedException(self::NAME, $objectName);
+        }
+    }
+
+    /**
+     * @param string $objectName
+     *
+     * @return string
+     * @throws ObjectNotSupportedException
+     */
+    private function getObjectNameFromEntityName(string $entityName)
+    {
+        switch ($entityName) {
+            case Lead::class:
+                return self::OBJECT_CONTACT;
+            case Company::class:
+                return self::OBJECT_COMPANY;
             default:
                 throw new ObjectNotSupportedException(self::NAME, $objectName);
         }
