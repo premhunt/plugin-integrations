@@ -258,6 +258,8 @@ class SyncProcess
         foreach ($integrationObjectsNames as $integrationObjectName) {
             $integrationObjectFields = $this->mappingManualDAO->getIntegrationObjectFieldNames($integrationObjectName);
 
+            var_dump($integrationObjectFields);
+
             if (count($integrationObjectFields) === 0) {
                 // No fields configured for a sync
                 DebugLogger::log(
@@ -324,7 +326,7 @@ class SyncProcess
             }
 
             $objectSyncFromDateTime = $this->getSyncFromDateTime(MauticSyncDataExchange::NAME, $internalObjectName);
-            var_dump($objectSyncFromDateTime);
+
             DebugLogger::log(
                 $this->mappingManualDAO->getIntegration(),
                 sprintf(

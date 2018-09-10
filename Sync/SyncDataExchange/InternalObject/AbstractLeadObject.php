@@ -65,9 +65,6 @@ class AbstractLeadObject extends ContactObject
             ->setFirstResult($start)
             ->setMaxResults($limit);
 
-        var_dump($qb->getSQL());
-        var_dump($qb->getParameters());
-        die();
         return $qb->execute()->fetchAll();
     }
 
@@ -92,7 +89,7 @@ class AbstractLeadObject extends ContactObject
             DebugLogger::log(
                 MauticSyncDataExchange::NAME,
                 sprintf(
-                    "Created lead ID %d",
+                    "Created AbstractLead ID %d",
                     $contact->getId()
                 ),
                 __CLASS__ . ':' . __FUNCTION__

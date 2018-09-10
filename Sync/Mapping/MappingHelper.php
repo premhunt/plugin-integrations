@@ -184,6 +184,7 @@ class MappingHelper
      */
     public function saveObjectMapping(ObjectMapping $objectMapping)
     {
+        var_dump($objectMapping);
         $this->objectMappingRepository->saveEntity($objectMapping);
         $this->objectMappingRepository->clear();
     }

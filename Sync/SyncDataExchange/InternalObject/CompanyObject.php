@@ -39,6 +39,14 @@ class CompanyObject implements ObjectInterface
      */
     private $connection;
 
+
+    public function __construct(CompanyModel $model, CompanyRepository $repository, Connection $connection)
+    {
+        $this->model      = $model;
+        $this->repository = $repository;
+        $this->connection = $connection;
+    }
+
     /**
      * @param ObjectChangeDAO[] $objects
      *
