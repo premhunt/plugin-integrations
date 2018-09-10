@@ -460,7 +460,6 @@ class SyncProcess
      * @param string $object
      *
      * @return \DateTimeInterface
-     * @throws \Exception
      */
     private function getSyncFromDateTime(string $integration, string $object): \DateTimeInterface
     {
@@ -603,6 +602,8 @@ class SyncProcess
                             $internalField->getName(),
                             $internalField->getValue()
                         );
+                        $internalInformationChangeRequest->setPossibleChangeDateTime($internalObject->getChangeDateTime());
+                        $internalInformationChangeRequest->setCertainChangeDateTime($internalField->getChangeDateTime());
 
                         // There is a conflict so let the judge determine which value comes out on top
                         $judgeModes = [
@@ -677,6 +678,9 @@ class SyncProcess
             }
         }
 
+        // Set the change date/time from the object so that we can update last sync date based on this
+        $objectChange->setChangeDateTime($integrationObject->getChangeDateTime());
+
         return $objectChange;
     }
 
@@ -687,7 +691,6 @@ class SyncProcess
      * @param ReportObjectDAO  $integrationObject
      *
      * @return ObjectChangeDAO
-     * @throws FieldNotFoundException
      * @throws ObjectNotFoundException
      */
     private function getSyncObjectChangeMauticToIntegration(
@@ -778,6 +781,9 @@ class SyncProcess
                     break;
             }
         }
+
+        // Set the change date/time from the object so that we can update last sync date based on this
+        $objectChange->setChangeDateTime($internalObject->getChangeDateTime());
 
         return $objectChange;
     }

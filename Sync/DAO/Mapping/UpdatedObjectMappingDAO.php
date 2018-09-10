@@ -37,19 +37,20 @@ class UpdatedObjectMappingDAO
     private $objectModifiedDate;
 
     /**
-     * UpdatedObjectMappingDAO constructor.
-     *
-     * @param ObjectChangeDAO $objectChangeDAO
-     * @param  mixed          $objectId
-     * @param       string    $objectName
-     * @param \DateTime       $objectModifiedDate
+     * @param ObjectChangeDAO    $objectChangeDAO
+     * @param mixed              $objectId
+     * @param string             $objectName
+     * @param \DateTimeInterface $objectModifiedDate
      */
-    public function __construct(ObjectChangeDAO $objectChangeDAO, $objectId, $objectName, \DateTime $objectModifiedDate)
+    public function __construct(ObjectChangeDAO $objectChangeDAO, $objectId, $objectName, \DateTimeInterface $objectModifiedDate)
     {
         $this->objectChangeDAO    = $objectChangeDAO;
         $this->objectId           = $objectId;
         $this->objectName         = $objectName;
-        $this->objectModifiedDate = $objectModifiedDate;
+        $this->objectModifiedDate = ($objectModifiedDate instanceof \DateTimeImmutable) ? new \DateTime(
+            $objectModifiedDate->format('Y-m-d H:i:s'),
+            $objectModifiedDate->getTimezone()
+        ) : $objectModifiedDate;
     }
 
     /**
@@ -77,9 +78,9 @@ class UpdatedObjectMappingDAO
     }
 
     /**
-     * @return \DateTime
+     * @return \DateTimeInterface
      */
-    public function getObjectModifiedDate(): \DateTime
+    public function getObjectModifiedDate(): \DateTimeInterface
     {
         return $this->objectModifiedDate;
     }
