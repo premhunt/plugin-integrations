@@ -172,6 +172,7 @@ return [
                 'arguments' => [
                     'mautic.lead.model.field',
                     'mautic.lead.repository.lead',
+                    'mautic.lead.repository.company',
                     'mautic.integrations.repository.object_mapping',
                 ],
             ],

@@ -1,5 +1,7 @@
 <?php
 
+namespace MauticPlugin\IntegrationsBundle\Sync\SyncDataExchange\InternalObject;
+
 /*
  * @copyright   2018 Mautic Inc. All rights reserved
  * @author      Mautic, Inc.
@@ -8,8 +10,6 @@
  *
  * @license     GNU/GPLv3 http://www.gnu.org/licenses/gpl-3.0.html
  */
-
-namespace MauticPlugin\IntegrationsBundle\Sync\SyncDataExchange\InternalObject;
 
 
 use Doctrine\DBAL\Connection;

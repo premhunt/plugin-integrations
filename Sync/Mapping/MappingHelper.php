@@ -11,6 +11,7 @@
 
 namespace MauticPlugin\IntegrationsBundle\Sync\Mapping;
 
+use Mautic\LeadBundle\Entity\CompanyRepository;
 use Mautic\LeadBundle\Entity\LeadRepository;
 use Mautic\LeadBundle\Model\FieldModel;
 use MauticPlugin\IntegrationsBundle\Entity\ObjectMapping;
@@ -35,6 +36,11 @@ class MappingHelper
     private $leadRepository;
 
     /**
+     * @var CompanyRepository
+     */
+    private $companyRepository;
+
+    /**
      * @var ObjectMappingRepository
      */
     private $objectMappingRepository;
@@ -44,12 +50,18 @@ class MappingHelper
      *
      * @param FieldModel              $fieldModel
      * @param LeadRepository          $leadRepository
+     * @param CompanyRepository       $companyRepository
      * @param ObjectMappingRepository $objectMappingRepository
      */
-    public function __construct(FieldModel $fieldModel, LeadRepository $leadRepository, ObjectMappingRepository $objectMappingRepository)
+    public function __construct(
+        FieldModel $fieldModel,
+        LeadRepository $leadRepository,
+        CompanyRepository $companyRepository,
+        ObjectMappingRepository $objectMappingRepository)
     {
-        $this->fieldModel              = $fieldModel;
-        $this->leadRepository          = $leadRepository;
+        $this->fieldModel = $fieldModel;
+        $this->leadRepository = $leadRepository;
+        $this->companyRepository = $companyRepository;
         $this->objectMappingRepository = $objectMappingRepository;
     }
 
@@ -84,7 +96,7 @@ class MappingHelper
             try {
                 $integrationField = $mappingManualDAO->getIntegrationMappedField($internalObjectName, $integrationObjectDAO->getObject(), $field);
                 if ($integrationValue = $integrationObjectDAO->getField($integrationField)) {
-                    $identifiers[$integrationField] = $integrationValue->getValue()->getNormalizedValue();
+                    $identifiers[$field] = $integrationValue->getValue()->getNormalizedValue();
                 }
             } catch (FieldNotFoundException $e) {}
 
@@ -96,13 +108,23 @@ class MappingHelper
             return new ObjectDAO($internalObjectName, null);
         }
 
-        if (!$foundContacts = $this->leadRepository->getLeadIdsByUniqueFields($identifiers)) {
+        //var_dump($internalObjectName); die();
+        switch ($internalObjectName) {
+            case MauticSyncDataExchange::OBJECT_COMPANY:
+                $foundObjects = $this->companyRepository->getCompanyIdsByUniqueFields($identifiers);
+                break;
+            case MauticSyncDataExchange::OBJECT_CONTACT:
+            case MauticSyncDataExchange::OBJECT_ABSTRACT_LEAD:
+                $foundObjects = $this->leadRepository->getLeadIdsByUniqueFields($identifiers);
+                break;
+        }
+        if (!$foundObjects) {
             // No contacts were found
             return new ObjectDAO($internalObjectName, null);
         }
 
         // Match found!
-        $objectId = $foundContacts[0]['id'];
+        $objectId = $foundObjects[0]['id'];
 
         // Let's store the relationship since we know it
         $objectMapping = new ObjectMapping();
@@ -184,7 +206,6 @@ class MappingHelper
      */
     public function saveObjectMapping(ObjectMapping $objectMapping)
     {
-        var_dump($objectMapping);
         $this->objectMappingRepository->saveEntity($objectMapping);
         $this->objectMappingRepository->clear();
     }

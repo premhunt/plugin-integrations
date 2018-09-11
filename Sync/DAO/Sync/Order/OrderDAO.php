@@ -135,6 +135,21 @@ class OrderDAO
         return $this->unidentifiedObjects;
     }
 
+
+    /**
+     * @param ObjectMapping $objectMapping
+     *
+     * @return $this
+     */
+    public function addObjectMappingObject(ObjectMapping $objectMapping) {
+        if (is_null($objectMapping->getLastSyncDate())) {
+            $objectMapping->setLastSyncDate(new \DateTime());
+        }
+        $this->objectMappings[] = $objectMapping;
+
+        return $this;
+    }
+
     /**
      * @param string                  $integration
      * @param string                  $internalObjectName
@@ -225,9 +240,9 @@ class OrderDAO
     }
 
     /**
-     * @return \DateTime
+     * @return \DateTimeInterface
      */
-    public function getSyncDateTime(): \DateTime
+    public function getSyncDateTime(): \DateTimeInterface
     {
         return $this->syncDateTime;
     }

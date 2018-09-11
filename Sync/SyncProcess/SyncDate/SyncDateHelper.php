@@ -39,10 +39,9 @@ class SyncDateHelper
      */
     public function getLastSyncDateForObject(string $integration, string $object)
     {
-        var_dump($object);
         $qb = $this->connection->createQueryBuilder();
 
-        $qb
+        return $qb
             ->select('max(m.last_sync_date)')
             ->from(MAUTIC_TABLE_PREFIX.'sync_object_mapping', 'm')
             ->where(
@@ -50,8 +49,8 @@ class SyncDateHelper
                 $qb->expr()->eq('m.integration_object_name', ':object')
             )
             ->setParameter('integration', $integration)
-            ->setParameter('object', $object);
-
-        return $qb->execute()->fetchColumn();;
+            ->setParameter('object', $object)
+            ->execute()
+            ->fetchColumn();
     }
 }
