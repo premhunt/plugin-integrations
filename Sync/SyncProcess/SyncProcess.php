@@ -277,13 +277,9 @@ class SyncProcess
                 continue;
             }
 
-            var_dump($this->syncFromDateTime); die();
-
             $objectSyncFromDateTime = $this->syncDateHelper->getSyncFromDateTime($this->mappingManualDAO->getIntegration(), $integrationObjectName);
             $objectSyncToDateTime   = $this->syncDateHelper->getSyncToDateTime();
             $lastObjectSyncDateTime = $this->syncDateHelper->getLastSyncDateForObject($this->mappingManualDAO->getIntegration(), $integrationObjectName);
-
-            var_dump($objectSyncFromDateTime); die();
 
             DebugLogger::log(
                 $this->mappingManualDAO->getIntegration(),

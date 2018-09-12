@@ -72,7 +72,6 @@ class SyncDateHelper
      */
     public function getSyncFromDateTime(string $integration, string $object): \DateTimeInterface
     {
-        var_dump($this->syncFromDateTime); die();
         if ($this->syncFromDateTime) {
             // The command requested a specific start date so use it
 
