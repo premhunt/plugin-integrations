@@ -13,6 +13,7 @@ namespace MauticPlugin\IntegrationsBundle\Sync\DAO\Sync\Order;
 
 use MauticPlugin\IntegrationsBundle\Entity\ObjectMapping;
 use MauticPlugin\IntegrationsBundle\Exception\UnexpectedValueException;
+use MauticPlugin\IntegrationsBundle\Sync\DAO\Mapping\RemappedObjectDAO;
 use MauticPlugin\IntegrationsBundle\Sync\DAO\Mapping\UpdatedObjectMappingDAO;
 use MauticPlugin\IntegrationsBundle\Sync\Exception\ObjectNotFoundException;
 
@@ -30,6 +31,11 @@ class OrderDAO
      * @var bool
      */
     private $isFirstTimeSync;
+
+    /**
+     * @var string
+     */
+    private $integration;
 
     /**
      * @var array
@@ -54,9 +60,24 @@ class OrderDAO
     private $objectMappings = [];
 
     /**
-     * @var array
+     * @var UpdatedObjectMappingDAO[]
      */
     private $updatedObjectMappings = [];
+
+    /**
+     * @var RemappedObjectDAO[]
+     */
+    private $remappedObjects = [];
+
+    /**
+     * @var ObjectChangeDAO[]
+     */
+    private $deleteTheseObjects = [];
+
+    /**
+     * @var array
+     */
+    private $retryTheseLater = [];
 
     /**
      * @var int
@@ -67,12 +88,14 @@ class OrderDAO
      * OrderDAO constructor.
      *
      * @param \DateTimeInterface $syncDateTime
-     * @param bool               $isFirstTimeSync
+     * @param   bool             $isFirstTimeSync
+     * @param  string            $integration
      */
-    public function __construct(\DateTimeInterface $syncDateTime, $isFirstTimeSync)
+    public function __construct(\DateTimeInterface $syncDateTime, $isFirstTimeSync, $integration)
     {
         $this->syncDateTime    = $syncDateTime;
         $this->isFirstTimeSync = $isFirstTimeSync;
+        $this->integration     = $integration;
     }
 
     /**
@@ -151,17 +174,15 @@ class OrderDAO
     }
 
     /**
-     * @param string                  $integration
-     * @param string                  $internalObjectName
-     * @param string|int              $internalObjectId
+     * Create a new mapping between the Mautic and Integration objects
+     *
+     * @param ObjectChangeDAO         $objectChangeDAO
      * @param string                  $integrationObjectName
      * @param string|int              $integrationObjectId
      * @param \DateTimeInterface|null $objectModifiedDate
      */
     public function addObjectMapping(
-        $integration,
-        $internalObjectName,
-        $internalObjectId,
+        ObjectChangeDAO $objectChangeDAO,
         $integrationObjectName,
         $integrationObjectId,
         \DateTimeInterface $objectModifiedDate = null
@@ -171,9 +192,9 @@ class OrderDAO
         }
 
         $objectMapping = new ObjectMapping();
-        $objectMapping->setIntegration($integration)
-            ->setInternalObjectName($internalObjectName)
-            ->setInternalObjectId($internalObjectId)
+        $objectMapping->setIntegration($this->integration)
+            ->setInternalObjectName($objectChangeDAO->getMappedObject())
+            ->setInternalObjectId($objectChangeDAO->getMappedObjectId())
             ->setIntegrationObjectName($integrationObjectName)
             ->setIntegrationObjectId($integrationObjectId)
             ->setLastSyncDate($objectModifiedDate);
@@ -181,24 +202,29 @@ class OrderDAO
         $this->objectMappings[] = $objectMapping;
     }
 
+
     /**
-     * @param ObjectChangeDAO $objectChangeDAO
-     * @param mixed           $newIntegrationObjectId
-     * @param null|string     $newIntegrationObjectName
-     * @param \DateTime|null  $objectModifiedDate
+     * Update an existing mapping in the case of conversions (i.e. Lead converted to Contact)
+     *
+     * @param mixed  $oldObjectId
+     * @param string $oldObjectName
+     * @param string $newObjectName
+     * @param mixed  $newObjectId
      */
-    public function updateObjectMapping(ObjectChangeDAO $objectChangeDAO, $newIntegrationObjectId, $newIntegrationObjectName = null, \DateTime $objectModifiedDate = null)
+    public function remapObject($oldObjectName, $oldObjectId, $newObjectName, $newObjectId = null)
     {
-        if (null === $objectModifiedDate) {
-            $objectModifiedDate = new \DateTime();
+        if (null === $newObjectId) {
+            $newObjectId = $oldObjectId;
         }
 
-        $this->updatedObjectMappings[] = new UpdatedObjectMappingDAO($objectChangeDAO, $newIntegrationObjectId, $newIntegrationObjectName, $objectModifiedDate);
+        $this->remappedObjects[$oldObjectId] = new RemappedObjectDAO($this->integration, $oldObjectName, $oldObjectId, $newObjectName, $newObjectId);
     }
 
     /**
-     * @param ObjectChangeDAO $objectChangeDAO
-     * @param \DateTimeInterface|null  $objectModifiedDate
+     * Update the last sync date of an existing mapping
+     *
+     * @param ObjectChangeDAO         $objectChangeDAO
+     * @param \DateTimeInterface|null $objectModifiedDate
      */
     public function updateLastSyncDate(ObjectChangeDAO $objectChangeDAO, \DateTimeInterface $objectModifiedDate = null)
     {
@@ -206,7 +232,37 @@ class OrderDAO
             $objectModifiedDate = new \DateTime();
         }
 
-        $this->updatedObjectMappings[] = new UpdatedObjectMappingDAO($objectChangeDAO, $objectChangeDAO->getObjectId(), $objectChangeDAO->getObject(), $objectModifiedDate);
+        $this->updatedObjectMappings[] = new UpdatedObjectMappingDAO(
+            $this->integration,
+            $objectChangeDAO->getObjectId(),
+            $objectChangeDAO->getObject(),
+            $objectModifiedDate
+        );
+    }
+
+    /**
+     * Mark an object as deleted in the integration so Mautic doesn't continue to attempt to sync it
+     *
+     * @param ObjectChangeDAO $objectChangeDAO
+     */
+    public function deleteObject(ObjectChangeDAO $objectChangeDAO)
+    {
+        $this->deleteTheseObjects[] = $objectChangeDAO;
+    }
+
+    /**
+     * If there is a temporary issue with syncing the object, tell the sync engine to not wipe out the tracked changes on Mautic's object fields
+     * so that they are attempted again for the next sync
+     *
+     * @param ObjectChangeDAO $objectChangeDAO
+     */
+    public function retrySyncLater(ObjectChangeDAO $objectChangeDAO)
+    {
+        if (!isset($this->retryTheseLater[$objectChangeDAO->getMappedObject()])) {
+            $this->retryTheseLater[$objectChangeDAO->getMappedObject()] = [];
+        }
+
+        $this->retryTheseLater[$objectChangeDAO->getMappedObject()][$objectChangeDAO->getMappedObjectId()] = $objectChangeDAO;
     }
 
     /**
@@ -218,11 +274,51 @@ class OrderDAO
     }
 
     /**
-     * @return array
+     * @return UpdatedObjectMappingDAO[]
      */
     public function getUpdatedObjectMappings(): array
     {
         return $this->updatedObjectMappings;
+    }
+
+    /**
+     * @return ObjectChangeDAO[]
+     */
+    public function getDeletedObjects(): array
+    {
+        return $this->deleteTheseObjects;
+    }
+
+    /**
+     * @return RemappedObjectDAO[]
+     */
+    public function getRemappedObjects(): array
+    {
+        return $this->remappedObjects;
+    }
+
+    /**
+     * @return ObjectChangeDAO[]
+     */
+    public function getSuccessfullySyncedObjects()
+    {
+        $synced = [];
+        foreach ($this->changedObjects as $object => $objectChanges) {
+            /** @var ObjectChangeDAO $objectChange */
+            foreach ($objectChanges as $objectChange) {
+                if (isset($this->retryTheseLater[$objectChange->getMappedObject()])) {
+                    continue;
+                }
+
+                if (isset($this->retryTheseLater[$objectChange->getMappedObject()][$objectChange->getMappedObjectId()])) {
+                    continue;
+                }
+
+                $synced[] = $objectChange;
+            }
+        }
+
+        return $synced;
     }
 
     /**

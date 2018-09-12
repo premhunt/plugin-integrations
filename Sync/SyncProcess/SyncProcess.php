@@ -11,6 +11,7 @@
 
 namespace MauticPlugin\IntegrationsBundle\Sync\SyncProcess;
 
+use MauticPlugin\IntegrationsBundle\Sync\Exception\ObjectDeletedException;
 use MauticPlugin\IntegrationsBundle\Sync\Exception\ObjectNotFoundException;
 use MauticPlugin\IntegrationsBundle\Sync\Logger\DebugLogger;
 use MauticPlugin\IntegrationsBundle\Sync\DAO\Sync\Order\FieldDAO;
@@ -65,11 +66,6 @@ class SyncProcess
     private $mappingHelper;
 
     /**
-     * @var \DateTimeInterface
-     */
-    private $syncDateTime;
-
-    /**
      * @var bool
      */
     private $isFirstTimeSync = false;
@@ -80,9 +76,9 @@ class SyncProcess
     private $syncFromDateTime;
 
     /**
-     * @var \DateTimeInterface[]
+     * @var \DateTimeInterface|null
      */
-    private $lastObjectSyncDates = [];
+    private $syncToDateTime;
 
     /**
      * @var int
@@ -100,6 +96,7 @@ class SyncProcess
      * @param MappingHelper             $mappingHelper
      * @param                           $isFirstTimeSync
      * @param \DateTimeInterface|null   $syncFromDateTime
+     * @param \DateTimeInterface|null   $syncToDateTime
      */
     public function __construct(
         SyncJudgeInterface $syncJudge,
@@ -109,8 +106,10 @@ class SyncProcess
         SyncDateHelper $syncDateHelper,
         MappingHelper $mappingHelper,
         $isFirstTimeSync,
-        \DateTimeInterface $syncFromDateTime = null
-    ) {
+        \DateTimeInterface $syncFromDateTime = null,
+        \DateTimeInterface $syncToDateTime = null
+    )
+    {
         $this->syncJudge                   = $syncJudge;
         $this->mappingManualDAO            = $mappingManualDAO;
         $this->internalSyncDataExchange    = $internalSyncDataExchange;
@@ -120,6 +119,7 @@ class SyncProcess
         $this->mappingHelper               = $mappingHelper;
         $this->isFirstTimeSync             = $isFirstTimeSync;
         $this->syncFromDateTime            = $syncFromDateTime;
+        $this->syncToDateTime              = $syncToDateTime;
     }
 
     /**
@@ -129,7 +129,7 @@ class SyncProcess
     {
         defined('MAUTIC_INTEGRATION_ACTIVE_SYNC') or define('MAUTIC_INTEGRATION_ACTIVE_SYNC', 1);
 
-        $this->syncDateTime = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $this->syncDateHelper->setSyncDateTimes($this->syncFromDateTime, $this->syncToDateTime);
 
         $this->executeIntegrationSync();
         $this->executeInternalSync();
@@ -181,6 +181,7 @@ class SyncProcess
 
             // Execute the sync instructions
             $this->internalSyncDataExchange->executeSyncOrder($syncOrder);
+
             // Fetch the next iteration/batch
             ++$this->syncIteration;
         } while (true);
@@ -229,12 +230,21 @@ class SyncProcess
 
             // Execute the sync instructions
             $this->integrationSyncDataExchange->executeSyncOrder($syncOrder);
+
             // Save the mappings between Mautic objects and the integration's objects
             $this->mappingHelper->saveObjectMappings($syncOrder->getObjectMappings());
-            // Update the mappings between Mautic objects and the integration's objects if applicable
+
+            // Remap integration objects to Mautic objects if applicable
+            $this->mappingHelper->remapIntegrationObjects($syncOrder->getRemappedObjects());
+
+            // Update last sync dates on existing object mappings
             $this->mappingHelper->updateObjectMappings($syncOrder->getUpdatedObjectMappings());
+
+            // Tell sync that these objects have been deleted and not to continue re-syncing them
+            $this->mappingHelper->markAsDeleted($syncOrder->getDeletedObjects());
+
             // Cleanup field tracking for successfully synced objects
-            $this->internalSyncDataExchange->cleanupProcessedObjects($syncOrder->getObjectMappings(), $syncOrder->getUpdatedObjectMappings());
+            $this->internalSyncDataExchange->cleanupProcessedObjects($syncOrder->getSuccessfullySyncedObjects());
 
             // Fetch the next iteration/batch
             ++$this->syncIteration;
@@ -267,19 +277,34 @@ class SyncProcess
                 continue;
             }
 
-            $objectSyncFromDateTime = $this->getSyncFromDateTime($this->mappingManualDAO->getIntegration(), $integrationObjectName);
+            var_dump($this->syncFromDateTime); die();
+
+            $objectSyncFromDateTime = $this->syncDateHelper->getSyncFromDateTime($this->mappingManualDAO->getIntegration(), $integrationObjectName);
+            $objectSyncToDateTime   = $this->syncDateHelper->getSyncToDateTime();
+            $lastObjectSyncDateTime = $this->syncDateHelper->getLastSyncDateForObject($this->mappingManualDAO->getIntegration(), $integrationObjectName);
+
+            var_dump($objectSyncFromDateTime); die();
+
             DebugLogger::log(
                 $this->mappingManualDAO->getIntegration(),
                 sprintf(
-                    "Integration to Mautic; syncing from %s for the %s object with %d fields",
+                    "Integration to Mautic; syncing from %s to %s for the %s object with %d fields but giving the option to sync from the object's last sync date of %s",
                     $objectSyncFromDateTime->format('Y-m-d H:i:s'),
+                    $objectSyncToDateTime->format('Y-m-d H:i:s'),
+                    ($lastObjectSyncDateTime) ? $lastObjectSyncDateTime->format('Y-m-d H:i:s') : 'null',
                     $integrationObjectName,
                     count($integrationObjectFields)
                 ),
                 __CLASS__.':'.__FUNCTION__
             );
 
-            $integrationRequestObject = new RequestObjectDAO($integrationObjectName, $objectSyncFromDateTime, $this->syncDateTime);
+            $integrationRequestObject = new RequestObjectDAO(
+                $integrationObjectName,
+                $objectSyncFromDateTime,
+                $objectSyncToDateTime,
+                $lastObjectSyncDateTime
+            );
+
             foreach ($integrationObjectFields as $integrationObjectField) {
                 $integrationRequestObject->addField($integrationObjectField);
             }
@@ -319,19 +344,21 @@ class SyncProcess
                 continue;
             }
 
-            $objectSyncFromDateTime = $this->getSyncFromDateTime(MauticSyncDataExchange::NAME, $internalObjectName);
+            $objectSyncFromDateTime = $this->syncDateHelper->getSyncFromDateTime(MauticSyncDataExchange::NAME, $internalObjectName);
+            $objectSyncToDateTime   = $this->syncDateHelper->getSyncToDateTime();
             DebugLogger::log(
                 $this->mappingManualDAO->getIntegration(),
                 sprintf(
-                    "Mautic to integration; syncing from %s for the %s object with %d fields",
+                    "Mautic to integration; syncing from %s to %s for the %s object with %d fields",
                     $objectSyncFromDateTime->format('Y-m-d H:i:s'),
+                    $objectSyncToDateTime->format('Y-m-d H:i:s'),
                     $internalObjectName,
                     count($internalObjectFields)
                 ),
                 __CLASS__.':'.__FUNCTION__
             );
 
-            $internalRequestObject  = new RequestObjectDAO($internalObjectName, $objectSyncFromDateTime, $this->syncDateTime);
+            $internalRequestObject  = new RequestObjectDAO($internalObjectName, $objectSyncFromDateTime, $objectSyncToDateTime);
             foreach ($internalObjectFields as $internalObjectField) {
                 $internalRequestObject->addField($internalObjectField);
             }
@@ -356,7 +383,7 @@ class SyncProcess
      */
     private function generateInternalSyncOrder(ReportDAO $syncReport)
     {
-        $syncOrder = new OrderDAO($this->syncDateTime, $this->isFirstTimeSync);
+        $syncOrder = new OrderDAO($this->syncDateHelper->getSyncDateTime(), $this->isFirstTimeSync, $this->mappingManualDAO->getIntegration());
 
         $integrationObjectsNames = $this->mappingManualDAO->getIntegrationObjectsNames();
         foreach ($integrationObjectsNames as $integrationObjectName) {
@@ -400,7 +427,7 @@ class SyncProcess
      */
     private function generateIntegrationSyncOrder(ReportDAO $syncReport)
     {
-        $syncOrder = new OrderDAO($this->syncDateTime, $this->isFirstTimeSync);
+        $syncOrder = new OrderDAO($this->syncDateHelper->getSyncDateTime(), $this->isFirstTimeSync, $this->mappingManualDAO->getIntegration());
 
         $internalObjectNames = $this->mappingManualDAO->getInternalObjectsNames();
         foreach ($internalObjectNames as $internalObjectName) {
@@ -421,59 +448,41 @@ class SyncProcess
                 );
 
                 foreach ($internalObjects as $internalObject) {
-                    $integrationObject = $this->internalSyncDataExchange->getMappedIntegrationObject(
-                        $this->mappingManualDAO->getIntegration(),
-                        $mappedIntegrationObjectName,
-                        $internalObject
-                    );
+                    try {
+                        $integrationObject = $this->mappingHelper->findIntegrationObject(
+                            $this->mappingManualDAO->getIntegration(),
+                            $mappedIntegrationObjectName,
+                            $internalObject
+                        );
 
-                    $objectChange = $this->getSyncObjectChangeMauticToIntegration(
-                        $syncReport,
-                        $objectMapping,
-                        $internalObject,
-                        $integrationObject
-                    );
+                        $objectChange = $this->getSyncObjectChangeMauticToIntegration(
+                            $syncReport,
+                            $objectMapping,
+                            $internalObject,
+                            $integrationObject
+                        );
 
-                    if ($objectChange->shouldSync()) {
-                        $syncOrder->addObjectChange($objectChange);
+                        if ($objectChange->shouldSync()) {
+                            $syncOrder->addObjectChange($objectChange);
+                        }
+                    } catch (ObjectDeletedException $exception) {
+                        DebugLogger::log(
+                            $this->mappingManualDAO->getIntegration(),
+                            sprintf(
+                                "Mautic to integration; Mautic's %s:%s object was deleted from the integration so don't try to sync",
+                                $internalObject->getObject(),
+                                $internalObject->getObjectId()
+                            ),
+                            __CLASS__.':'.__FUNCTION__
+                        );
+
+                        continue;
                     }
                 }
             }
         }
 
         return $syncOrder;
-    }
-
-    /**
-     * @param string $integration
-     * @param string $object
-     *
-     * @return \DateTimeInterface
-     */
-    private function getSyncFromDateTime(string $integration, string $object): \DateTimeInterface
-    {
-        if ($this->syncFromDateTime) {
-            // The command requested a specific start date so use it
-
-            return $this->syncFromDateTime;
-        }
-
-        $key = $integration.$object;
-        if (isset($this->lastObjectSyncDates[$key])) {
-            // Use the same sync date for integrations to paginate properly
-
-            return $this->lastObjectSyncDates[$key];
-        }
-
-        if (MauticSyncDataExchange::NAME !== $integration && $lastSync = $this->syncDateHelper->getLastSyncDateForObject($integration, $object)) {
-            // Use the latest sync date recorded
-            $this->lastObjectSyncDates[$key] = new \DateTimeImmutable($lastSync, new \DateTimeZone('UTC'));
-        } else {
-            // Otherwise, just sync the last 24 hours
-            $this->lastObjectSyncDates[$key] = new \DateTimeImmutable('-24 hours', new \DateTimeZone('UTC'));
-        }
-
-        return $this->lastObjectSyncDates[$key];
     }
 
     /**
@@ -494,7 +503,7 @@ class SyncProcess
         ReportObjectDAO $internalObject
     ) {
         $objectChange = new ObjectChangeDAO(
-            $syncReport->getIntegration(),
+            $this->mappingManualDAO->getIntegration(),
             $internalObject->getObject(),
             $internalObject->getObjectId(),
             $integrationObject->getObject(),
@@ -683,7 +692,7 @@ class SyncProcess
         ReportObjectDAO $integrationObject
     ) {
         $objectChange = new ObjectChangeDAO(
-            $syncReport->getIntegration(),
+            $this->mappingManualDAO->getIntegration(),
             $internalObject->getObject(),
             $internalObject->getObjectId(),
             $integrationObject->getObject(),

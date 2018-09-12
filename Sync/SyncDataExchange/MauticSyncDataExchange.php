@@ -90,6 +90,11 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
     private $fieldList = [];
 
     /**
+     * @var array
+     */
+    private $lastProcessedTrackedId = [];
+
+    /**
      * MauticSyncDataExchange constructor.
      *
      * @param FieldChangeRepository            $fieldChangeRepository
@@ -108,9 +113,8 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
         ContactObject $contactObjectHelper,
         AbstractLeadObject $leadObjectHelper,
         FieldModel $fieldModel
-    )
-    {
-        $this->fieldChangeRepository = $fieldChangeRepository;
+    ) {
+        $this->fieldChangeRepository   = $fieldChangeRepository;
         $this->variableExpresserHelper = $variableExpresserHelper;
         $this->mappingHelper = $mappingHelper;
         $this->companyObjectHelper = $companyObjectHelper;
@@ -132,9 +136,7 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
             return $this->buildReportFromFullObjects($requestDAO);
         }
 
-        $report = $this->buildReportFromTrackedChanges($requestDAO);
-
-        return $report;
+        return $this->buildReportFromTrackedChanges($requestDAO);
     }
 
     /**
@@ -155,7 +157,7 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                         $updateCount,
                         $objectName
                     ),
-                    __CLASS__ . ':' . __FUNCTION__
+                    __CLASS__.':'.__FUNCTION__
                 );
 
                 if (0 === $updateCount) {
@@ -177,16 +179,15 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                     default:
                         throw new ObjectNotSupportedException(self::NAME, $objectName);
                 }
+
                 $this->mappingHelper->updateObjectMappings($updatedObjectMappings);
-            }
-            catch (ObjectNotSupportedException $exception) {
+            } catch (ObjectNotSupportedException $exception) {
                 DebugLogger::log(
                     self::NAME,
                     $exception->getMessage(),
-                    __CLASS__ . ':' . __FUNCTION__
+                    __CLASS__.':'.__FUNCTION__
                 );
             }
-            $this->mappingHelper->updateObjectMappings($updatedObjectMappings);
         }
 
         $unidentifiedObjects = $syncOrderDAO->getUnidentifiedObjects();
@@ -201,7 +202,7 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                         $createCount,
                         $objectName
                     ),
-                    __CLASS__ . ':' . __FUNCTION__
+                    __CLASS__.':'.__FUNCTION__
                 );
 
                 if (0 === $createCount) {
@@ -223,16 +224,13 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                 }
 
                 $this->mappingHelper->saveObjectMappings($objectMappings);
-            }
-            catch (ObjectNotSupportedException $exception) {
+            } catch (ObjectNotSupportedException $exception) {
                 DebugLogger::log(
                     self::NAME,
                     $exception->getMessage(),
-                    __CLASS__ . ':' . __FUNCTION__
+                    __CLASS__.':'.__FUNCTION__
                 );
             }
-
-            $this->mappingHelper->saveObjectMappings($objectMappings);
         }
     }
 
@@ -242,7 +240,6 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
      * @param ReportObjectDAO  $integrationObjectDAO
      *
      * @return ReportObjectDAO
-     * @throws \Exception
      */
     public function getConflictedInternalObject(MappingManualDAO $mappingManualDAO, string $internalObjectName, ReportObjectDAO $integrationObjectDAO)
     {
@@ -264,44 +261,15 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
     }
 
     /**
-     * @param string          $integration
-     * @param string          $integrationObjectName
-     * @param ReportObjectDAO $internalObjectDAO
-     *
-     * @return ReportObjectDAO
+     * @param ObjectChangeDAO[] $objectChanges
      */
-    public function getMappedIntegrationObject(string $integration, string $integrationObjectName, ReportObjectDAO $internalObjectDAO)
+    public function cleanupProcessedObjects(array $objectChanges)
     {
-        $integrationObject = $this->mappingHelper->findIntegrationObject($integration, $integrationObjectName, $internalObjectDAO);
-
-        if ($integrationObject) {
-            return $integrationObject;
-        }
-
-        return new ReportObjectDAO($integrationObjectName, null);
-    }
-
-    /**
-     * @param ObjectMapping[]           $newMappings
-     * @param UpdatedObjectMappingDAO[] $updatedMappings
-     */
-    public function cleanupProcessedObjects(array $newMappings, array $updatedMappings)
-    {
-
-        foreach ($newMappings as $mapping) {
-
-            $object = $mapping->getInternalObjectName();
-            $objectId = $mapping->getInternalObjectId();
+        foreach ($objectChanges as $changedObjectDAO) {
+            $object   = $changedObjectDAO->getMappedObject();
+            $objectId = $changedObjectDAO->getMappedObjectId();
 
             $this->fieldChangeRepository->deleteEntitiesForObject($objectId, $object);
-        }
-
-        foreach ($updatedMappings as $mapping) {
-            $changedObjectDAO = $mapping->getObjectChangeDAO();
-            $object = $changedObjectDAO->getObject();
-            $objectId = $changedObjectDAO->getObjectId();
-
-            $this->fieldChangeRepository->deleteEntitiesForObject($objectId, $this->getFieldObjectName($object));
         }
     }
 
@@ -312,7 +280,7 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
      */
     private function buildReportFromFullObjects(RequestDAO $requestDAO)
     {
-        $syncReport = new ReportDAO(self::NAME);
+        $syncReport       = new ReportDAO(self::NAME);
         $requestedObjects = $requestDAO->getObjects();
 
         $limit = 200;
@@ -332,7 +300,7 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                         $start,
                         $limit
                     ),
-                    __CLASS__ . ':' . __FUNCTION__
+                    __CLASS__.':'.__FUNCTION__
                 );
 
                 switch ($objectDAO->getObject()) {
@@ -370,11 +338,11 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                         !empty($object['date_modified']) ? $object['date_modified'] : $object['date_added'],
                         new \DateTimeZone('UTC')
                     );
-                    $objectDAO = new ReportObjectDAO($objectDAO->getObject(), $object['id'], $modifiedDateTime);
+                    $objectDAO        = new ReportObjectDAO($objectDAO->getObject(), $object['id'], $modifiedDateTime);
                     $syncReport->addObject($objectDAO);
 
                     foreach ($fields as $field) {
-                        $fieldType = $this->getNormalizedFieldType($mauticFields[$field]['type']);
+                        $fieldType       = $this->getNormalizedFieldType($mauticFields[$field]['type']);
                         $normalizedValue = new NormalizedValueDAO(
                             $fieldType,
                             $object[$field]
@@ -383,12 +351,11 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                         $objectDAO->addField(new ReportFieldDAO($field, $normalizedValue));
                     }
                 }
-            }
-            catch (ObjectNotSupportedException $exception) {
+            } catch (ObjectNotSupportedException $exception) {
                 DebugLogger::log(
                     self::NAME,
                     $exception->getMessage(),
-                    __CLASS__ . ':' . __FUNCTION__
+                    __CLASS__.':'.__FUNCTION__
                 );
             }
         }
@@ -396,29 +363,39 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
         return $syncReport;
     }
 
-
     /**
      * @param RequestDAO $requestDAO
      *
      * @return ReportDAO
-     * @throws \Exception
      */
     private function buildReportFromTrackedChanges(RequestDAO $requestDAO)
     {
-        $syncReport = new ReportDAO(self::NAME);
+        $syncReport       = new ReportDAO(self::NAME);
         $requestedObjects = $requestDAO->getObjects();
 
         foreach ($requestedObjects as $objectDAO) {
             try {
+                if (!isset($this->lastProcessedTrackedId[$objectDAO->getObject()])) {
+                    $this->lastProcessedTrackedId[$objectDAO->getObject()] = 0;
+                }
+
                 $fieldsChanges = $this->fieldChangeRepository->findChangesBefore(
                     $this->getFieldObjectName($objectDAO->getObject()),
-                    $objectDAO->getToDateTime()
+                    $objectDAO->getToDateTime(),
+                    $this->lastProcessedTrackedId[$objectDAO->getObject()]
                 );
 
                 $reportObjects = [];
                 foreach ($fieldsChanges as $fieldChange) {
-                    $object = $this->getObjectNameFromEntityName($fieldChange['object_type']);
-                    $objectId = $fieldChange['object_id'];
+                    $objectId = (int) $fieldChange['object_id'];
+
+                    // Track the last processed ID to prevent loops for objects that were set to be retried later
+                    if ($objectId > $this->lastProcessedTrackedId[$objectDAO->getObject()]) {
+                        $this->lastProcessedTrackedId[$objectDAO->getObject()] = $objectId;
+                    }
+
+                    $object           = $this->getObjectNameFromEntityName($fieldChange['object_type']);
+                    $objectId         = $fieldChange['object_id'];
                     $modifiedDateTime = new \DateTime($fieldChange['modified_at'], new \DateTimeZone('UTC'));
 
                     if (!array_key_exists($object, $reportObjects)) {
@@ -444,12 +421,11 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
                         $reportObjectDAO->setChangeDateTime($modifiedDateTime);
                     }
                 }
-            }
-            catch (ObjectNotSupportedException $exception) {
+            } catch (ObjectNotSupportedException $exception) {
                 DebugLogger::log(
                     self::NAME,
                     $exception->getMessage(),
-                    __CLASS__ . ':' . __FUNCTION__
+                    __CLASS__.':'.__FUNCTION__
                 );
             }
         }
@@ -461,14 +437,13 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
      * @param array $fieldChange
      *
      * @return ReportFieldDAO
-     * @throws \Exception
      */
     private function getFieldChangeObject(array $fieldChange)
     {
         $changeTimestamp = new \DateTimeImmutable($fieldChange['modified_at'], new \DateTimeZone('UTC'));
-        $columnType = $fieldChange['column_type'];
-        $columnValue = $fieldChange['column_value'];
-        $newValue = $this->variableExpresserHelper->decodeVariable(new EncodedValueDAO($columnType, $columnValue));
+        $columnType      = $fieldChange['column_type'];
+        $columnValue     = $fieldChange['column_value'];
+        $newValue        = $this->variableExpresserHelper->decodeVariable(new EncodedValueDAO($columnType, $columnValue));
 
         $reportFieldDAO = new ReportFieldDAO($fieldChange['column_name'], $newValue);
         $reportFieldDAO->setChangeDateTime($changeTimestamp);

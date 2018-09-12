@@ -132,9 +132,9 @@ class CompanyObject implements ObjectInterface
 
             // Integration name and ID are stored in the change's mappedObject/mappedObjectId
             $updatedMappedObjects[] = new UpdatedObjectMappingDAO(
-                $changedObject,
-                $changedObject->getObjectId(),
-                $changedObject->getObject(),
+                $changedObject->getIntegration(),
+                $changedObject->getMappedObject(),
+                $changedObject->getMappedObjectId(),
                 $changedObject->getChangeDateTime()
             );
         }

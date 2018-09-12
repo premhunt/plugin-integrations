@@ -19,8 +19,11 @@ use MauticPlugin\IntegrationsBundle\Entity\ObjectMappingRepository;
 use MauticPlugin\IntegrationsBundle\Sync\DAO\Mapping\MappingManualDAO;
 use MauticPlugin\IntegrationsBundle\Sync\DAO\Mapping\RemappedObjectDAO;
 use MauticPlugin\IntegrationsBundle\Sync\DAO\Mapping\UpdatedObjectMappingDAO;
+use MauticPlugin\IntegrationsBundle\Sync\DAO\Sync\Order\ObjectChangeDAO;
 use MauticPlugin\IntegrationsBundle\Sync\DAO\Sync\Report\ObjectDAO;
 use MauticPlugin\IntegrationsBundle\Sync\Exception\FieldNotFoundException;
+use MauticPlugin\IntegrationsBundle\Sync\Exception\ObjectDeletedException;
+use MauticPlugin\IntegrationsBundle\Sync\Exception\ObjectNotFoundException;
 use MauticPlugin\IntegrationsBundle\Sync\SyncDataExchange\MauticSyncDataExchange;
 
 class MappingHelper
@@ -50,7 +53,6 @@ class MappingHelper
      *
      * @param FieldModel              $fieldModel
      * @param LeadRepository          $leadRepository
-     * @param CompanyRepository       $companyRepository
      * @param ObjectMappingRepository $objectMappingRepository
      */
     public function __construct(
@@ -89,14 +91,14 @@ class MappingHelper
         }
 
         // We don't know who this is so search Mautic
-        $uniqueIdentifierFields = $this->fieldModel->getUniqueIdentifierFields(['object' => ($internalObjectName=='AbstractLead') ? 'Lead' : $internalObjectName ]);
+        $uniqueIdentifierFields = $this->fieldModel->getUniqueIdentifierFields(['object' => $internalObjectName]);
         $identifiers            = [];
 
         foreach ($uniqueIdentifierFields as $field => $fieldLabel) {
             try {
                 $integrationField = $mappingManualDAO->getIntegrationMappedField($internalObjectName, $integrationObjectDAO->getObject(), $field);
                 if ($integrationValue = $integrationObjectDAO->getField($integrationField)) {
-                    $identifiers[$field] = $integrationValue->getValue()->getNormalizedValue();
+                    $identifiers[$integrationField] = $integrationValue->getValue()->getNormalizedValue();
                 }
             } catch (FieldNotFoundException $e) {}
 
@@ -108,7 +110,6 @@ class MappingHelper
             return new ObjectDAO($internalObjectName, null);
         }
 
-        //var_dump($internalObjectName); die();
         switch ($internalObjectName) {
             case MauticSyncDataExchange::OBJECT_COMPANY:
                 $foundObjects = $this->companyRepository->getCompanyIdsByUniqueFields($identifiers);
@@ -145,6 +146,7 @@ class MappingHelper
      * @param ObjectDAO $internalObjectDAO
      *
      * @return ObjectDAO
+     * @throws ObjectDeletedException
      */
     public function findIntegrationObject(string $integration, string $integrationObjectName, ObjectDAO $internalObjectDAO)
     {
@@ -154,6 +156,10 @@ class MappingHelper
             $internalObjectDAO->getObjectId(),
             $integrationObjectName
         )) {
+            if ($integrationObject['is_deleted']) {
+                throw new ObjectDeletedException();
+            }
+
             return new ObjectDAO(
                 $integrationObjectName,
                 $integrationObject['integration_object_id'],
@@ -202,9 +208,19 @@ class MappingHelper
     }
 
     /**
+     * @param ObjectChangeDAO[] $objects
+     */
+    public function markAsDeleted(array $objects)
+    {
+        foreach ($objects as $object) {
+            $this->objectMappingRepository->markAsDeleted($object->getIntegration(), $object->getObject(), $object->getObjectId());
+        }
+    }
+
+    /**
      * @param ObjectMapping $objectMapping
      */
-    public function saveObjectMapping(ObjectMapping $objectMapping)
+    private function saveObjectMapping(ObjectMapping $objectMapping)
     {
         $this->objectMappingRepository->saveEntity($objectMapping);
         $this->objectMappingRepository->clear();
@@ -212,90 +228,28 @@ class MappingHelper
 
     /**
      * @param UpdatedObjectMappingDAO $updatedObjectMappingDAO
+     *
+     * @throws ObjectNotFoundException
      */
-    public function updateObjectMapping(UpdatedObjectMappingDAO $updatedObjectMappingDAO)
+    private function updateObjectMapping(UpdatedObjectMappingDAO $updatedObjectMappingDAO)
     {
-        $integration = $updatedObjectMappingDAO->getObjectChangeDAO()->getIntegration();
+        /** @var ObjectMapping $objectMapping */
+        $objectMapping = $this->objectMappingRepository->findOneBy(
+            [
+                'integration'           => $updatedObjectMappingDAO->getIntegration(),
+                'integrationObjectName' => $updatedObjectMappingDAO->getIntegrationObjectName(),
+                'integrationObjectId'   => $updatedObjectMappingDAO->getIntegrationObjectId()
+            ]
+        );
 
-        // This seems backwards but it's not. The ObjectChangeDAO object is based on where the change originated. So if it's Mautic, then the
-        // object's main object name and ID are the integration where the mapped object name and ID is Mautic's.
-        if (MauticSyncDataExchange::NAME === $integration) {
-            $objectMapping = $this->getIntegrationObjectMapping($updatedObjectMappingDAO);
-        } else {
-            $objectMapping = $this->getInternalObjectMapping($updatedObjectMappingDAO);
+        if (!$objectMapping) {
+            throw new ObjectNotFoundException(
+                $updatedObjectMappingDAO->getIntegrationObjectName().":".$updatedObjectMappingDAO->getIntegrationObjectId()
+            );
         }
 
         $objectMapping->setLastSyncDate($updatedObjectMappingDAO->getObjectModifiedDate());
 
         $this->saveObjectMapping($objectMapping);
-    }
-
-    /**
-     * @param UpdatedObjectMappingDAO $updatedObjectMappingDAO
-     *
-     * @return ObjectMapping
-     */
-    private function getIntegrationObjectMapping(UpdatedObjectMappingDAO $updatedObjectMappingDAO)
-    {
-        $changeObject  = $updatedObjectMappingDAO->getObjectChangeDAO();
-        $objectMapping = $this->objectMappingRepository->findOneBy(
-            [
-                'integration'           => $changeObject->getIntegration(),
-                'integrationObjectName' => $changeObject->getObject(),
-                'integrationObjectId'   => $changeObject->getObjectId(),
-                'internalObjectName'    => $changeObject->getMappedObject(),
-                'internalObjectId'      => $changeObject->getMappedObjectId()
-            ]
-        );
-
-        if (!$objectMapping) {
-            // Original mapping wan't found so just create this as a new mapping
-            $objectMapping = new ObjectMapping();
-            $objectMapping->setLastSyncDate(new \DateTime())
-                ->setIntegration($changeObject->getIntegration())
-                ->setInternalObjectName($changeObject->getMappedObject())
-                ->setInternalObjectId($changeObject->getMappedObjectId());
-
-        }
-
-        $objectMapping
-            ->setIntegrationObjectName($updatedObjectMappingDAO->getObjectName())
-            ->setIntegrationObjectId($updatedObjectMappingDAO->getObjectId());
-
-        return $objectMapping;
-    }
-
-    /**
-     * @param UpdatedObjectMappingDAO $updatedObjectMappingDAO
-     *
-     * @return ObjectMapping
-     */
-    private function getInternalObjectMapping(UpdatedObjectMappingDAO $updatedObjectMappingDAO)
-    {
-        $changeObject  = $updatedObjectMappingDAO->getObjectChangeDAO();
-        $objectMapping = $this->objectMappingRepository->findOneBy(
-            [
-                'integration'           => $changeObject->getIntegration(),
-                'internalObjectName'    => $changeObject->getObject(),
-                'internalObjectId'      => $changeObject->getObjectId(),
-                'integrationObjectName' => $changeObject->getMappedObject(),
-                'integrationObjectId'   => $changeObject->getMappedObjectId(),
-            ]
-        );
-
-        if (!$objectMapping) {
-            // Original mapping wan't found so just create this as a new mapping
-            $objectMapping = new ObjectMapping();
-            $objectMapping->setLastSyncDate(new \DateTime())
-                ->setIntegration($changeObject->getIntegration())
-                ->setIntegrationObjectName($changeObject->getMappedObject())
-                ->setIntegrationObjectName($changeObject->getMappedObjectId());
-        }
-
-        $objectMapping
-            ->setInternalObjectName($updatedObjectMappingDAO->getObjectName())
-            ->setInternalObjectId($updatedObjectMappingDAO->getObjectId());
-
-        return $objectMapping;
     }
 }
