@@ -91,7 +91,7 @@ class ObjectMappingRepository  extends CommonRepository
     {
         $qb = $this->getEntityManager()->getConnection()->createQueryBuilder();
 
-        $qb->update(MAUTIC_TABLE_PREFIX.'sync_object_mapping')
+        $qb->update(MAUTIC_TABLE_PREFIX.'sync_object_mapping', 'i')
             ->set('integration_object_name', ':newObjectName')
             ->set('integration_object_id', ':newObjectId')
             ->where(
@@ -107,7 +107,7 @@ class ObjectMappingRepository  extends CommonRepository
             ->setParameter('oldObjectName', $oldObjectName)
             ->setParameter('oldObjectId', $oldObjectId);
 
-        return $qb->execute()->rowCount();
+        return $qb->execute();
     }
 
     /**
@@ -117,12 +117,13 @@ class ObjectMappingRepository  extends CommonRepository
      *
      * @return \Doctrine\DBAL\Driver\Statement|int
      */
-    public function markAsDeleted($integration, $objectName, $objectId)
+    public function markAsDeleted(string $integration, string $objectName, $objectId, \DateTimeInterface $lastSyncDate)
     {
         $qb = $this->getEntityManager()->getConnection()->createQueryBuilder();
 
         $qb->update(MAUTIC_TABLE_PREFIX.'sync_object_mapping','m')
             ->set('is_deleted', 1)
+            ->set('last_sync_date', ':lastSyncDate')
             ->where(
                 $qb->expr()->andX(
                     $qb->expr()->eq('m.integration', ':integration'),
@@ -132,7 +133,8 @@ class ObjectMappingRepository  extends CommonRepository
             )
             ->setParameter('integration', $integration)
             ->setParameter('objectName', $objectName)
-            ->setParameter('objectId', $objectId);
+            ->setParameter('objectId', $objectId)
+            ->setParameter('lastSyncDate', $lastSyncDate->format('Y-m-d H:i:s'));
 
         return $qb->execute();
     }
