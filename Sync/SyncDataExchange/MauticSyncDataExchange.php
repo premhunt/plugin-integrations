@@ -132,7 +132,7 @@ class MauticSyncDataExchange implements SyncDataExchangeInterface
 
         $fieldChanges = $this->fieldChangeRepository->findChangesForObject(
             $mappingManualDAO->getIntegration(),
-            $internalObjectName,
+            $this->mappingHelper->getMauticEntityClassName($internalObjectName),
             $internalObjectDAO->getObjectId()
         );
 
