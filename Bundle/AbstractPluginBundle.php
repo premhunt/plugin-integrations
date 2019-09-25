@@ -1,7 +1,7 @@
 <?php
 
 /*
- * @copyright   2014 Mautic Contributors. All rights reserved
+ * @copyright   2019 Mautic Contributors. All rights reserved
  * @author      Mautic
  *
  * @link        http://mautic.org
@@ -17,7 +17,6 @@ use Mautic\CoreBundle\Factory\MauticFactory;
 use \Mautic\PluginBundle\Bundle\PluginBundleBase;
 use Mautic\PluginBundle\Entity\Plugin;
 use MauticPlugin\IntegrationsBundle\Migration\Engine;
-use Symfony\Component\Debug\Exception\UndefinedMethodException;
 
 /**
  * Base Bundle class which should be extended by addon bundles.
@@ -65,8 +64,8 @@ abstract class AbstractPluginBundle extends PluginBundleBase
      *
      * @return string The Bundle name it overrides or null if no parent
      */
-    public function getParent(): string
+    public function getParent()
     {
-        return '';
+        return null;
     }
 }
