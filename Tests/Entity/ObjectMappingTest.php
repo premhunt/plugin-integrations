@@ -29,8 +29,8 @@ class ObjectMappingTest extends \PHPUnit_Framework_TestCase
     public function testSetAndGetIntegrationReferenceId()
     {
         $objectMapping = new ObjectMapping($this->dateCreated);
-        $objectMapping->setIntegrationReference('ref');
-        $this->assertEquals('ref', $objectMapping->getIntegrationReference());
+        $objectMapping->setIntegrationReferenceId('ref');
+        $this->assertEquals('ref', $objectMapping->getIntegrationReferenceId());
     }
 
     public function testLoadMetadata()
@@ -49,7 +49,7 @@ class ObjectMappingTest extends \PHPUnit_Framework_TestCase
             'lastSyncDate',
             'internalStorage',
             'isDeleted',
-            'integrationReference'
+            'integrationReferenceId'
         ];
         $this->assertEquals($expectedFieldNames, $metadata->getFieldNames());
 
@@ -58,7 +58,7 @@ class ObjectMappingTest extends \PHPUnit_Framework_TestCase
             [
                 'integration',
                 'integration_object_name',
-                'integration_reference',
+                'integration_reference_id',
                 'integration_object_id',
             ],
             $referenceIdMapping['columns'],
