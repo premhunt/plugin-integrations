@@ -13,6 +13,7 @@ namespace MauticPlugin\IntegrationsBundle\Sync\DAO\Sync\Report;
 
 use MauticPlugin\IntegrationsBundle\Sync\DAO\Mapping\RemappedObjectDAO;
 use MauticPlugin\IntegrationsBundle\Sync\DAO\Sync\InformationChangeRequestDAO;
+use MauticPlugin\IntegrationsBundle\Sync\DAO\Sync\RelationsDAO;
 use MauticPlugin\IntegrationsBundle\Sync\Exception\FieldNotFoundException;
 use MauticPlugin\IntegrationsBundle\Sync\Exception\ObjectNotFoundException;
 
@@ -37,6 +38,11 @@ class ReportDAO
     private $remappedObjects = [];
 
     /**
+     * @var RelationsDAO
+     */
+    private $relations;
+
+    /**
      * SyncReportDAO constructor.
      *
      * @param $integration
@@ -44,6 +50,7 @@ class ReportDAO
     public function __construct($integration)
     {
         $this->integration = $integration;
+        $this->relations   = new RelationsDAO();
     }
 
     /**
@@ -172,4 +179,14 @@ class ReportDAO
     {
         return !empty($this->objects);
     }
+
+    /**
+     *
+     * @return RelationsDAO
+     */
+    public function getRelations(): RelationsDAO
+    {
+        return $this->relations;
+    }
+
 }
