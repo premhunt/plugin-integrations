@@ -21,7 +21,6 @@ use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Tester\CommandTester;
 
-
 /**
  * This test must run in a separate process because it sets the global constant
  * MAUTIC_INTEGRATION_SYNC_IN_PROGRESS which breaks other tests.
