@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace MauticPlugin\IntegrationsBundle\Command;
 
+use Mautic\CoreBundle\Helper\CoreParametersHelper;
 use MauticPlugin\IntegrationsBundle\Exception\InvalidValueException;
 use MauticPlugin\IntegrationsBundle\Sync\DAO\Sync\InputOptionsDAO;
 use MauticPlugin\IntegrationsBundle\Sync\SyncService\SyncServiceInterface;
@@ -32,13 +33,22 @@ class SyncCommand extends ContainerAwareCommand
     private $syncService;
 
     /**
-     * @param SyncServiceInterface $syncService
+     * @var CoreParametersHelper
      */
-    public function __construct(SyncServiceInterface $syncService)
-    {
+    private $coreParametersHelper;
+
+    /**
+     * @param SyncServiceInterface $syncService
+     * @param CoreParametersHelper $coreParametersHelper
+     */
+    public function __construct(
+        SyncServiceInterface $syncService,
+        CoreParametersHelper $coreParametersHelper
+    ) {
         parent::__construct();
 
-        $this->syncService = $syncService;
+        $this->syncService          = $syncService;
+        $this->coreParametersHelper = $coreParametersHelper;
     }
 
     /**
@@ -120,7 +130,7 @@ class SyncCommand extends ContainerAwareCommand
 
             $this->syncService->processIntegrationSync($inputOptions);
         } catch (\Throwable $e) {
-            if ('dev' === $input->getOption('env') || (defined('MAUTIC_ENV') && MAUTIC_ENV === 'dev')) {
+            if ('dev' === $input->getOption('env') || (defined('MAUTIC_ENV') && MAUTIC_ENV === 'dev') || $this->coreParametersHelper->getParameter('debug', false)) {
                 throw $e;
             }
 

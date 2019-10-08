@@ -52,6 +52,7 @@ return [
                 'class'     => \MauticPlugin\IntegrationsBundle\Command\SyncCommand::class,
                 'arguments' => [
                     'mautic.integrations.sync.service',
+                    'mautic.helper.core_parameters',
                 ],
                 'tag' => 'console.command',
             ],

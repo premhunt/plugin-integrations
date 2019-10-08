@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace MauticPlugin\IntegrationsBundle\Tests\Unit\Command;
 
+use Mautic\CoreBundle\Helper\CoreParametersHelper;
 use MauticPlugin\IntegrationsBundle\Command\SyncCommand;
 use MauticPlugin\IntegrationsBundle\Sync\DAO\Sync\InputOptionsDAO;
 use MauticPlugin\IntegrationsBundle\Sync\SyncDataExchange\MauticSyncDataExchange;
@@ -38,6 +39,11 @@ class SyncCommandTest extends \PHPUnit_Framework_TestCase
     private $syncService;
 
     /**
+     * @var CoreParametersHelper|\PHPUnit_Framework_MockObject_MockObject
+     */
+    private $paramsHelper;
+
+    /**
      * @var CommandTester
      */
     private $commandTester;
@@ -46,10 +52,11 @@ class SyncCommandTest extends \PHPUnit_Framework_TestCase
     {
         parent::setUp();
 
-        $this->syncService = $this->createMock(SyncServiceInterface::class);
-        $application       = new Application();
+        $this->syncService  = $this->createMock(SyncServiceInterface::class);
+        $this->paramsHelper = $this->createMock(CoreParametersHelper::class);
+        $application        = new Application();
 
-        $application->add(new SyncCommand($this->syncService));
+        $application->add(new SyncCommand($this->syncService, $this->paramsHelper));
 
         // env is global option. Must be defined.
         $application->getDefinition()->addOption(
