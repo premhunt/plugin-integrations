@@ -66,6 +66,20 @@ return [
                     'mautic.integrations.helper.sync_integrations',
                 ],
             ],
+            'mautic.integrations.subscriber.contact_object' => [
+                'class'     => \MauticPlugin\IntegrationsBundle\EventListener\ContactObjectSubscriber::class,
+                'arguments' => [
+                    'mautic.integrations.helper.contact_object',
+                    'router',
+                ],
+            ],
+            'mautic.integrations.subscriber.company_object' => [
+                'class'     => \MauticPlugin\IntegrationsBundle\EventListener\CompanyObjectSubscriber::class,
+                'arguments' => [
+                    'mautic.integrations.helper.company_object',
+                    'router',
+                ],
+            ],
             'mautic.integrations.subscriber.controller' => [
                 'class'     => \MauticPlugin\IntegrationsBundle\EventListener\ControllerSubscriber::class,
                 'arguments' => [
@@ -149,6 +163,7 @@ return [
                 'class'     => \MauticPlugin\IntegrationsBundle\Helper\SyncIntegrationsHelper::class,
                 'arguments' => [
                     'mautic.integrations.helper',
+                    'mautic.integrations.internal.object_provider',
                 ],
             ],
             'mautic.integrations.helper.config_integrations' => [
@@ -170,6 +185,19 @@ return [
                 'class'     => \MauticPlugin\IntegrationsBundle\Facade\EncryptionService::class,
                 'arguments' => [
                     'mautic.helper.encryption',
+                ],
+            ],
+            'mautic.integrations.internal.object_provider' => [
+                'class'     => \MauticPlugin\IntegrationsBundle\Sync\SyncDataExchange\Internal\ObjectProvider::class,
+                'arguments' => [
+                    'event_dispatcher',
+                ],
+            ],
+            'mautic.integrations.sync.notification.helper.owner_provider' => [
+                'class'     => \MauticPlugin\IntegrationsBundle\Sync\Notification\Helper\OwnerProvider::class,
+                'arguments' => [
+                    'event_dispatcher',
+                    'mautic.integrations.internal.object_provider',
                 ],
             ],
             'mautic.http.client' => [
@@ -252,8 +280,8 @@ return [
                 'class'     => \MauticPlugin\IntegrationsBundle\Sync\SyncDataExchange\Internal\Executioner\OrderExecutioner::class,
                 'arguments' => [
                     'mautic.integrations.helper.sync_mapping',
-                    'mautic.integrations.helper.contact_object',
-                    'mautic.integrations.helper.company_object',
+                    'event_dispatcher',
+                    'mautic.integrations.internal.object_provider',
                 ],
             ],
             'mautic.integrations.sync.data_exchange.mautic.field_helper' => [
@@ -264,6 +292,7 @@ return [
                     'mautic.channel.helper.channel_list',
                     'translator',
                     'event_dispatcher',
+                    'mautic.integrations.internal.object_provider',
                 ],
             ],
             'mautic.integrations.sync.sync_process.value_helper' => [
@@ -281,9 +310,9 @@ return [
             'mautic.integrations.sync.data_exchange.mautic.full_object_report_builder' => [
                 'class'     => \MauticPlugin\IntegrationsBundle\Sync\SyncDataExchange\Internal\ReportBuilder\FullObjectReportBuilder::class,
                 'arguments' => [
-                    'mautic.integrations.helper.contact_object',
-                    'mautic.integrations.helper.company_object',
                     'mautic.integrations.sync.data_exchange.mautic.field_builder',
+                    'mautic.integrations.internal.object_provider',
+                    'event_dispatcher',
                 ],
             ],
             'mautic.integrations.sync.data_exchange.mautic.partial_object_report_builder' => [
@@ -291,9 +320,9 @@ return [
                 'arguments' => [
                     'mautic.integrations.repository.field_change',
                     'mautic.integrations.sync.data_exchange.mautic.field_helper',
-                    'mautic.integrations.helper.contact_object',
-                    'mautic.integrations.helper.company_object',
                     'mautic.integrations.sync.data_exchange.mautic.field_builder',
+                    'mautic.integrations.internal.object_provider',
+                    'event_dispatcher',
                 ],
             ],
             'mautic.integrations.sync.data_exchange.mautic' => [
@@ -364,8 +393,8 @@ return [
                 'arguments' => [
                     'mautic.lead.model.field',
                     'mautic.integrations.repository.object_mapping',
-                    'mautic.integrations.helper.contact_object',
-                    'mautic.integrations.helper.company_object',
+                    'mautic.integrations.internal.object_provider',
+                    'event_dispatcher',
                 ],
             ],
             'mautic.integrations.sync.helper.relations' => [
@@ -427,7 +456,8 @@ return [
             'mautic.integrations.sync.notification.helper_route' => [
                 'class'     => \MauticPlugin\IntegrationsBundle\Sync\Notification\Helper\RouteHelper::class,
                 'arguments' => [
-                    'router',
+                    'mautic.integrations.internal.object_provider',
+                    'event_dispatcher',
                 ],
             ],
             'mautic.integrations.sync.notification.helper_user_notification' => [
@@ -435,6 +465,7 @@ return [
                 'arguments' => [
                     'mautic.integrations.sync.notification.writer',
                     'mautic.integrations.sync.notification.helper_user',
+                    'mautic.integrations.sync.notification.helper.owner_provider',
                     'mautic.integrations.sync.notification.helper_route',
                     'translator',
                 ],
@@ -444,6 +475,7 @@ return [
                 'arguments' => [
                     'mautic.integrations.sync.notification.writer',
                     'mautic.integrations.sync.notification.helper_user',
+                    'mautic.integrations.sync.notification.helper.owner_provider',
                     'mautic.integrations.sync.notification.helper_route',
                     'translator',
                 ],
