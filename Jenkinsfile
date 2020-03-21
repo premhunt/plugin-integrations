@@ -12,7 +12,7 @@ pipeline {
       inheritFrom 'with-mysql'
       containerTemplate {
         name 'hosted-tester'
-        image 'us.gcr.io/mautic-ma/mautic_tester:master'
+        image 'us.gcr.io/mautic-ma/mautic_tester_72:master'
         ttyEnabled true
         command 'cat'
       }
