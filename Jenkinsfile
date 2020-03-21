@@ -30,6 +30,7 @@ pipeline {
         }
       }
     }
+    /*
     stage('Build') {
       steps {
         container('hosted-tester') {
@@ -94,6 +95,7 @@ pipeline {
         }
       }
     }
+    */
   }
   post {
     failure {
