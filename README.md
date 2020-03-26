@@ -1,36 +1,14 @@
-# Mautic Integrations
+# Mautic 3
+
+This has now been included in Mautic 3 and thus should only be used for Mautic 2 compatible plugins. Everything is the same except the namespace is `\Mautic\IntegrationsBundle`
+
+# Mautic Integration
 
 > Integrations solutions structured to mirror current Integrations and created as transition to final product.
 
 ## Install integrations bundle
 
-Bundle is to be installed as any other common plugin even it is to be a part of Mautic in the future.
-
-Create app/bundles/PluginBundle/Integration/UnifiedIntegrationInterface.php
-
-```php
-<?php
-
-/*
- * @copyright   2018 Mautic Contributors. All rights reserved
- * @author      Mautic
- *
- * @link        http://mautic.org
- *
- * @license     GNU/GPLv3 http://www.gnu.org/licenses/gpl-3.0.html
- */
-
-namespace Mautic\PluginBundle\Integration;
-
-/**
- * Interface UnifiedIntegrationInterface is used for type hinting.
- */
-interface UnifiedIntegrationInterface
-{
-}
-```
-
-### Composer requirements and dependencies
+Refer to https://github.com/mautic-inc/plugin-integrations/wiki for instructions on how to install and use this plugin.
 
 ### Sync command
 
