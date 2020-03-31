@@ -10,6 +10,21 @@ This has now been included in Mautic 3 and thus should only be used for Mautic 2
 
 Refer to https://github.com/mautic-inc/plugin-integrations/wiki for instructions on how to install and use this plugin.
 
+## Features
+
+### Tokens
+#### Integration Object Token
+This bundle makes the Integration Object Token available. This token can be used to insert data relating to objects which have been synced to Mautic from its various integrations.
+The token will create an HTML link to the object's location in the integration. For instance, when used with contacts that have been imported from Salesforce, the link will take you to the corresponding contact in Salesforce.
+
+The format for this token is as follows: `{mapped-integration-object=Lead | integration=Salesforce2 | default=Not Found | link-text=Go to SFDC | base-url=$baseUrl}` 
+
+ - `mapped-integration`: This is the name of the object being mapped. i.e 'Lead' or 'Contact' for Salesforce. It corresponds to the value in the `integration_object_name` column.
+ - `integration`: The name of the integration. i.e 'Salesforce2'. It corresponds to the value in the `integration` column.
+ - `default`: Some default text to show if the value isn't found
+ - `link-text`: The text to use in for the link in the <a> tag that is generated. i.e <a href='#'>Your Link Text</a>
+ - `base-url`: The base url of the integration. i.e for Salesforce, something like https://yourdomain.salesforce.com. The path to the object will be appended to this.
+
 ### Sync command
 
 `$ app/console mautic:integrations:sync Magento --first-time-sync --start-datetime="2019-09-12T12:00:00"`
