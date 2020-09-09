@@ -2,6 +2,8 @@
 
 This has now been included in Mautic 3 and thus should only be used for Mautic 2 compatible plugins. Everything is the same except the namespace is `\Mautic\IntegrationsBundle`
 
+This repository was archived on 2020-09-09. Everything is read only. This repository will be deleted once Mautic 2 hits end of life.
+
 # Mautic Integration
 
 > Integrations solutions structured to mirror current Integrations and created as transition to final product.
